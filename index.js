@@ -1,147 +1,92 @@
-import React, { Component } from 'react';
-import ReactDOM from 'react-dom';
-import request from 'superagent-bluebird-promise';
-var isFunction = function(fn) {
-  var getType = {};
-  return fn && getType.toString.call(fn) === '[object Function]';
-};
+import React, { PropTypes } from 'react';
+import './MyInfo.css';
 
-function formatMaxSize(size) {
-  size = size.toString().toUpperCase();
-  var bsize, m = size.indexOf('M'),
-    k = size.indexOf('K');
-  if (m > -1) {
-    bsize = parseFloat(size.slice(0, m)) * 1024 * 1024
-  } else if (k > -1) {
-    bsize = parseFloat(size.slice(0, k)) * 1024
-  } else {
-    bsize = parseFloat(size)
-  }
-  return Math.abs(bsize)
-}
-/*
-  var uploadUrl = 'http://upload.qiniu.com'
-    if (window.location.protocol === 'https:') {
-      uploadUrl = 'https://up.qbox.me/'
-    }
-*/
-export default class Qiniu extends Component {
-  static defaultProps = {
-    uploadUrl: 'http://upload.qiniu.com',
-    supportClick: true,
-    multiple: true
-  };
-  static propTypes = {
-    onDrop: React.PropTypes.func.isRequired,
-    token: React.PropTypes.string.isRequired,
-    // called before upload to set callback to files
-    onUpload: React.PropTypes.func,
-    size: React.PropTypes.number,
-    style: React.PropTypes.object,
-    supportClick: React.PropTypes.bool,
-    accept: React.PropTypes.string,
-    multiple: React.PropTypes.bool,
-    // Qiniu
-    uploadUrl: React.PropTypes.string,
-    prefix: React.PropTypes.string,
-    //props to check File Size before upload.example:'2Mb','30k'...
-    maxSize: React.PropTypes.string
-  };
+// 七牛图片url
+const QINIU_URL = 'http://olepdhrf4.bkt.clouddn.com/';
+
+// url
+const BASE_URL = 'http://192.168.1.167:3000/api/';
+
+// 编辑信息
+export default class MyInfoEdit extends React.Component {
+
   constructor(props) {
     super(props);
-    this.state = {
-      isDragActive: false
-    };
   }
-  onDragLeave(e) {
-    this.setState({
-      isDragActive: false
-    });
-  }
-  onDragOver(e) {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'copy';
-    this.setState({
-      isDragActive: true
-    });
-  }
-  onDrop(e) {
-    e.preventDefault();
-    this.setState({
-      isDragActive: false
-    });
-    var files;
-    if (e.dataTransfer) {
-      files = e.dataTransfer.files;
-    } else if (e.target) {
-      files = e.target.files;
-    }
-    var maxFiles = (this.props.multiple) ? files.length : 1;
-    if (this.props.onUpload) {
-      files = Array.prototype.slice.call(files, 0, maxFiles);
-      this.props.onUpload(files, e);
-    }
-    var maxSizeLimit = formatMaxSize(this.props.maxSize)
-    for (var i = 0; i < maxFiles; i++) {
-      if (maxSizeLimit && files[i].size > maxSizeLimit) {
-        console.trace && console.trace(new Error('文件大小错误!'))
-        this.props.onError && this.props.onError({
-          coed: 1,
-          message: '上传的文件大小超出了限制:' + this.props.maxSize
-        })
-      } else {
-        files[i].preview = URL.createObjectURL(files[i]);
-        files[i].request = this.upload(files[i]);
-        files[i].uploadPromise = files[i].request.promise();
+
+  /* eslint-disable */
+  componentDidMount() {
+    const me = this;
+    this.uploader = Qiniu.uploader({
+      runtimes: 'html5,flash,html4',      // 上传模式，依次退化
+      browse_button: 'mypickfile',         // 上传选择的点选按钮，必需
+      // uptoken: 'Dy6Npzhe0F3-QyVDNZ_2cRQ3VU244JT47GLYWeLt:r4fRiepT29xZvOVc-p_8Ok6SCeo=:eyJzY29wZSI6Im16LWR4IiwiZGVhZGxpbmUiOjE0ODcxNTA0MTd9',
+      uptoken_url: `${BASE_URL}Images/uploadToken`,         // Ajax请求uptoken的Url，强烈建议设置（服务端提供）
+      // get_new_uptoken: false,             // 设置上传文件的时候是否每次都重新获取新的uptoken
+      domain: 'mz-dx',     // bucket域名，下载资源时用到，必需
+      // container: 'container',             // 上传区域DOM ID，默认是browser_button的父元素
+      max_file_size: '100mb',             // 最大文件体积限制
+      flash_swf_url: 'https://cdn.staticfile.org/plupload/2.1.7/Moxie.swf',
+      max_retries: 3,                     // 上传失败最大重试次数
+      dragdrop: true,                     // 开启可拖曳上传
+      // drop_element: 'container',          // 拖曳上传区域元素的ID，拖曳文件或文件夹后可触发上传
+      chunk_size: '4mb',                  // 分块上传时，每块的体积
+      unique_names: true,
+      auto_start: true,                   // 选择文件后自动上传，若关闭需要自己绑定事件触发上传
+      filters: {
+        mime_types : [ //只允许上传图片
+            { title : "Image files", extensions : "jpg,jpeg,gif,png" },
+        ],
+        prevent_duplicates : false //不允许选取重复文件
+      },
+      init: {
+        FilesAdded: function(up, files) {
+          plupload.each(files, function(file) {
+            // 文件添加进队列后，处理相关的事情
+            // console.log('FilesAdded');
+            // console.log(file);
+          });
+        },
+        BeforeUpload: function(up, file) {
+          // 每个文件上传前，处理相关的事情
+          console.log('BeforeUpload');
+          console.log(up);
+          console.log(file);
+        },
+        UploadProgress: function(up, file) {
+          // 每个文件上传时，处理相关的事情
+          console.log('UploadProgress');
+          console.log(up);
+          console.log(file);
+        },
+        FileUploaded: function(up, file, info) {
+          console.log('FileUploaded');
+          console.log(up); //
+          console.log(file); // {size: '图片大小', name: '图片的名字', type: '图片类型'}
+          console.log(info); //格式：{"hash":"FoOYGEqUohVUIRU3_shTi-2BFrIC","key":"o_1b90g7g009i1hj9edgqorhu57.jpg"}
+        },
+        Error: function(up, err, errTip) {
+          // 上传出错时，处理相关的事情
+          console.log('Error');
+          // message.error(errTip);
+        },
+        UploadComplete: function() {
+          // 队列文件处理完毕后，处理相关的事情
+          console.log('UploadComplete');
+        }
       }
-    }
-    if (this.props.onDrop) {
-      files = Array.prototype.slice.call(files, 0, maxFiles);
-      this.props.onDrop(files, e);
-    }
+    });
   }
-  onClick() {
-    if (this.props.supportClick) {
-      this.open();
-    }
-  }
-  open() {
-    var fileInput = ReactDOM.findDOMNode(this.refs.fileInput);
-    fileInput.value = null;
-    fileInput.click();
-  }
-  upload(file) {
-    if (!file || file.size === 0) return null;
-    var key = file.preview.split('/').pop() + '.' + file.name.split('.').pop();
-    if (this.props.prefix) {
-      key = this.props.prefix + key;
-    }
-    var r = request
-      .post(this.props.uploadUrl)
-      .field('key', key)
-      .field('token', this.props.token)
-      .field('x:filename', file.name)
-      .field('x:size', file.size)
-      .attach('file', file, file.name)
-      .set('Accept', 'application/json');
-    if (isFunction(file.onprogress)) { r.on('progress', file.onprogress); }
-    return r;
-  }
+
   render() {
-    var className = this.props.className || 'dropzone';
-    if (this.state.isDragActive) {
-      className += ' active';
-    }
-    var style = this.props.style || {
-      width: this.props.size || 100,
-      height: this.props.size || 100,
-      borderStyle: this.state.isDragActive ? 'solid' : 'dashed'
-    };
     return (
-      React.createElement('div', { className: className, style: style, onClick: this.onClick, onDragLeave: this.onDragLeave, onDragOver: this.onDragOver, onDrop: this.onDrop },
-        React.createElement('input', { style: { display: 'none' }, type: 'file', multiple: this.props.multiple, ref: 'fileInput', onChange: this.onDrop, accept: this.props.accept }),
-        this.props.children
-      )
+			<div className="info-form">
+        <div className="user-info-avatar">
+          <label>头像</label>
+          <div> <img id="mypickfile" src={ this.props.user.avatar ? this.props.user.avatar.url : me }/>
+        <span>点击图片选择图片</span> </div>
+        </div>
+      </div>
     );
   }
 }
